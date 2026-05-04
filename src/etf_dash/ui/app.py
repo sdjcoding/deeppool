@@ -5,12 +5,15 @@ from __future__ import annotations
 import streamlit as st
 
 from etf_dash.ui._shared import get_repo, show_data_health
+from etf_dash.ui.auth import require_password
 
 st.set_page_config(
     page_title="DeepPool — KRX ETF Dashboard",
     page_icon="📊",
     layout="wide",
 )
+
+require_password()
 
 st.title("DeepPool")
 st.caption("KRX 상장 ETF 분석 · 자산배분 전략 백테스트 · 시장 매크로 모니터")

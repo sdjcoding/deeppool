@@ -7,6 +7,7 @@ import streamlit as st
 
 from etf_dash.analysis import backtest
 from etf_dash.ui._shared import cached_prices, cached_strategies
+from etf_dash.ui.auth import require_password
 from etf_dash.ui.components.charts import (
     drawdown_chart,
     equity_curve,
@@ -15,6 +16,7 @@ from etf_dash.ui.components.charts import (
 from etf_dash.ui.components.tables import format_metrics_table
 
 st.set_page_config(page_title="Strategies", page_icon="🧭", layout="wide")
+require_password()
 st.title("🧭 자산배분 전략 백테스트")
 
 strategies = cached_strategies()

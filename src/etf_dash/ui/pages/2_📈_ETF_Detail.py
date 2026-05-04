@@ -11,10 +11,12 @@ from etf_dash.ui._shared import (
     cached_snapshots,
     get_repo,
 )
+from etf_dash.ui.auth import require_password
 from etf_dash.ui.components.charts import price_line
 from etf_dash.ui.components.tables import format_metrics_table
 
 st.set_page_config(page_title="ETF Detail", page_icon="📈", layout="wide")
+require_password()
 
 meta = cached_meta()
 if meta.empty:

@@ -8,9 +8,11 @@ import streamlit as st
 from etf_dash.analysis.correlation import correlation_matrix
 from etf_dash.analysis.flows import top_flows
 from etf_dash.ui._shared import cached_meta, cached_prices, cached_snapshots
+from etf_dash.ui.auth import require_password
 from etf_dash.ui.components.charts import asset_class_pie, correlation_heatmap
 
 st.set_page_config(page_title="Market", page_icon="🌐", layout="wide")
+require_password()
 st.title("🌐 시장 / 매크로 분석")
 
 meta = cached_meta()

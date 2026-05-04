@@ -29,11 +29,20 @@ uv run python -m etf_dash.ingest --job prices --full \
   --ticker 069500 --ticker 148070 --ticker 136340 --ticker 132030 \
   --ticker 261220 --ticker 273130 --ticker 360750 --ticker 133690
 
-# 3. 대시보드 실행
-uv run streamlit run src/etf_dash/ui/app.py
+# 3. 비밀번호 설정 (앱 게이트 — 외부 노출 시 필수)
+mkdir -p .streamlit
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+# 에디터로 .streamlit/secrets.toml 열어서 app_password 변경
+# 강한 비번 생성: openssl rand -base64 24
+
+# 4. 대시보드 실행
+./scripts/run_dashboard.sh
+# 또는: uv run streamlit run src/etf_dash/ui/app.py
 ```
 
-브라우저가 자동으로 `http://localhost:8501`을 엽니다.
+브라우저에서 `http://localhost:8501` 접속 → 비밀번호 입력 → 4개 페이지 사용.
+
+**외부에서 접속하려면** ngrok 설정: [docs/operations.md](docs/operations.md)의 "Exposing to the internet (ngrok)" 절 참고.
 
 ## 일일 갱신
 

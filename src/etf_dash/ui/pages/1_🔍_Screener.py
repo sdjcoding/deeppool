@@ -5,11 +5,13 @@ from __future__ import annotations
 import streamlit as st
 
 from etf_dash.ui._shared import cached_meta, cached_prices, cached_snapshots
+from etf_dash.ui.auth import require_password
 from etf_dash.ui.components.charts import normalized_overlay
 from etf_dash.ui.components.filters import apply_filters, screener_sidebar
 from etf_dash.ui.components.tables import format_screener_table
 
 st.set_page_config(page_title="ETF Screener", page_icon="🔍", layout="wide")
+require_password()
 st.title("🔍 ETF Screener")
 st.caption("KRX 상장 ETF를 자산군·운용사·이름으로 탐색하고 비교하세요.")
 

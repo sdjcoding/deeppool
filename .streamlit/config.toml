@@ -1,0 +1,17 @@
+[server]
+# Listen on all interfaces so a tunnel (ngrok / Tailscale / Cloudflare) can
+# reach the app. Local-only? change to "127.0.0.1".
+address = "0.0.0.0"
+port = 8501
+headless = true
+
+# XSRF works fine through ngrok in basic-tunnel mode; keep it on.
+enableXsrfProtection = true
+enableCORS = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#2c7bb6"

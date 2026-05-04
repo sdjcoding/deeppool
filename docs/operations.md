@@ -76,11 +76,80 @@ launchctl list | grep deeppool
 
 ## Running the dashboard
 
+### Local
+
 ```bash
+./scripts/run_dashboard.sh
+# or, equivalent:
 uv run streamlit run src/etf_dash/ui/app.py
 ```
 
-Defaults: `http://localhost:8501`. Multipage navigation appears in the sidebar.
+Defaults: listens on `http://localhost:8501` (and `http://0.0.0.0:8501` on every
+interface — see `.streamlit/config.toml`). Multipage navigation appears in the
+sidebar.
+
+### Password gate (always on)
+
+The app refuses to render any page until the user enters the password set in
+`.streamlit/secrets.toml`:
+
+```toml
+# .streamlit/secrets.toml  (gitignored — never commit)
+app_password = "<your-strong-password-here>"
+```
+
+Generate a strong password:
+
+```bash
+openssl rand -base64 24
+```
+
+Then:
+
+```bash
+mkdir -p .streamlit
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+$EDITOR .streamlit/secrets.toml      # paste the generated password
+```
+
+Or override via env var (useful for CI / headless setups):
+
+```bash
+APP_PASSWORD="..." ./scripts/run_dashboard.sh
+```
+
+The gate uses `hmac.compare_digest` (constant-time comparison) and stores
+`authenticated=True` in `st.session_state` after one successful entry per
+browser session.
+
+### Exposing to the internet (ngrok)
+
+For external access from your phone or other networks:
+
+```bash
+# 1. Install + authenticate (once)
+brew install ngrok
+ngrok config add-authtoken <YOUR_TOKEN>     # sign up free at https://ngrok.com
+
+# 2. Set ngrok-level basic auth (second layer on top of the app password)
+export NGROK_BASIC_AUTH="alice:another-strong-password"
+
+# 3. In one terminal, run the dashboard
+./scripts/run_dashboard.sh
+
+# 4. In another terminal, open the tunnel
+./scripts/run_tunnel.sh
+```
+
+ngrok prints a URL like `https://abc123.ngrok-free.app`. Visiting it prompts
+for the ngrok basic-auth credentials, then the Streamlit password gate. Free
+tier URLs change on each restart — buy a paid plan ($8/mo) if you want a
+stable hostname.
+
+> ⚠️ Even with both auth layers, a personal investment dashboard exposed on
+> a public URL has non-zero risk. Use unique strong passwords, rotate
+> occasionally, and prefer Tailscale (private mesh, no public exposure) if
+> you only need access from your own devices.
 
 ## Troubleshooting
 
