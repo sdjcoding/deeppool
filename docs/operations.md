@@ -1,0 +1,125 @@
+# Operations
+
+## Daily refresh
+
+After KRX market close (~18:00 KST), refresh meta + snapshot + price increments:
+
+```bash
+cd /path/to/DeepPool
+uv run python -m etf_dash.ingest --job all
+```
+
+Job breakdown:
+
+| Job | What it does | Typical duration |
+|---|---|---|
+| `meta` | Refresh `etf_meta` from `fdr.StockListing('ETF/KR')` and append today's row to `etf_snapshot` for every ticker (~1100 rows). | <10s |
+| `prices` | Per-ticker incremental OHLCV pull. Resumes from `last_price_date(ticker) + 1`. | 5–15 min for full universe |
+| `validate` | Print row counts and basic sanity checks (NaN/negative closes, missing issuers). | <1s |
+
+`--job all` runs `meta` then `prices`.
+
+### Useful flags
+
+```bash
+# One-time bootstrap: pull 5y of history for all ETFs (slow, ~1–2h)
+uv run python -m etf_dash.ingest --job prices --full
+
+# Backfill a single ticker
+uv run python -m etf_dash.ingest --job prices --full --ticker 069500
+
+# Re-fetch full window (ignore cache) for a small set
+uv run python -m etf_dash.ingest --job prices --full \
+  --ticker 069500 --ticker 273130 --ticker 360750
+```
+
+## Scheduling examples
+
+### macOS (launchd)
+
+`~/Library/LaunchAgents/com.deeppool.daily.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.deeppool.daily</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd /path/to/DeepPool &amp;&amp; /Users/$USER/.local/bin/uv run python -m etf_dash.ingest --job all &gt;&gt; data/ingest.log 2&gt;&amp;1</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>18</integer>
+    <key>Minute</key><integer>30</integer>
+  </dict>
+  <key>StandardOutPath</key><string>/tmp/deeppool.out</string>
+  <key>StandardErrorPath</key><string>/tmp/deeppool.err</string>
+</dict>
+</plist>
+```
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.deeppool.daily.plist
+launchctl list | grep deeppool
+```
+
+### Linux (cron)
+
+```cron
+30 18 * * 1-5 cd /path/to/DeepPool && $HOME/.local/bin/uv run python -m etf_dash.ingest --job all >> data/ingest.log 2>&1
+```
+
+## Running the dashboard
+
+```bash
+uv run streamlit run src/etf_dash/ui/app.py
+```
+
+Defaults: `http://localhost:8501`. Multipage navigation appears in the sidebar.
+
+## Troubleshooting
+
+### "ETF 데이터가 없습니다"
+The cache DB exists but is empty. Run `--job all` once to populate.
+
+### Ingest errors for specific tickers
+Look at `ingest_log` table:
+```bash
+uv run python -c "
+from etf_dash.repository.db import connect
+with connect() as c:
+    for r in c.execute(
+      'SELECT * FROM ingest_log WHERE status != \"ok\" ORDER BY run_at DESC LIMIT 20'
+    ):
+        print(dict(r))
+"
+```
+
+### Stale cache after long downtime
+Use `--full` to re-fetch the full lookback window:
+```bash
+uv run python -m etf_dash.ingest --job prices --full
+```
+
+### KRX site blocks (future-proofing)
+We use FinanceDataReader (Naver-backed) precisely to avoid the `data.krx.co.kr`
+bot block that disabled `pykrx` as of 2026-05. If Naver also tightens, options
+are in priority order:
+1. Register for KRX OPEN API (https://openapi.krx.co.kr) — official, stable
+2. Add a NaverScraperProvider for ETF detail pages
+3. Re-enable pykrx if/when its session handling is fixed
+
+## Backup / cleanup
+
+```bash
+# Backup the SQLite cache
+cp data/cache.db data/cache.$(date +%Y%m%d).db.bak
+
+# Reset everything (will require re-ingest from scratch)
+rm -rf data/cache.db data/cache.db-shm data/cache.db-wal data/holdings/
+```
