@@ -1,0 +1,12 @@
+cache:
+  db_path: data/cache.db
+  parquet_root: data/holdings
+
+ingest:
+  request_sleep_seconds: 0.2
+  max_retries: 3
+  default_lookback_years: 5
+
+ui:
+  default_page_size: 50
+  cache_ttl_seconds: 3600

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# uv
+uv.lock
+
+# Data cache (local only — re-derivable via ingest)
+data/cache.db
+data/cache.db-*
+data/holdings/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Env / secrets
+.env
+.env.local
+
+# OS / IDE / Tools
+.DS_Store
+.idea/
+.vscode/
+*.swp
+.claude/
+
+# Notebooks
+.ipynb_checkpoints/
