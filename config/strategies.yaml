@@ -1,0 +1,47 @@
+# Curated asset-allocation templates mapped to KRX ETFs.
+#
+# Tickers below are common, liquid representatives of each role; user can
+# clone this file (e.g. config/strategies.local.yaml) to swap their preferred
+# tickers without touching code.
+#
+# Initial three: All Weather (KR variant), Classic 60/40, Core-Satellite.
+
+- id: all_weather_kr
+  name: All Weather (KR 변형)
+  description: |
+    Ray Dalio의 All Weather를 KRX 상장 ETF로 매핑한 변형.
+    주식·장기채·중기채·금·원자재로 분산해 모든 경제 국면에서 안정 추구.
+    원본은 미국 자산 기준이라 환율/세금 차이가 성과에 영향을 줄 수 있음.
+  rebalance: quarterly
+  benchmark_ticker: "069500"
+  legs:
+    - { ticker: "069500", weight: 0.30, role: "주식 코어 (KOSPI 200)" }
+    - { ticker: "148070", weight: 0.40, role: "장기 국채 (KOSEF 10년)" }
+    - { ticker: "136340", weight: 0.15, role: "중기 채권 (KBSTAR 중기우량회사채)" }
+    - { ticker: "132030", weight: 0.075, role: "금 (KODEX 골드선물)" }
+    - { ticker: "261220", weight: 0.075, role: "원자재 (KODEX WTI 원유선물)" }
+
+- id: classic_60_40
+  name: Classic 60/40
+  description: |
+    가장 단순한 전형. 주식 60% (KOSPI 200) + 채권 40% (종합채권).
+    장기적으로 양호한 위험조정수익률을 제공하는 벤치마크 격 포트폴리오.
+  rebalance: quarterly
+  benchmark_ticker: "069500"
+  legs:
+    - { ticker: "069500", weight: 0.60, role: "주식 (KOSPI 200)" }
+    - { ticker: "273130", weight: 0.40, role: "채권 (KODEX 종합채권)" }
+
+- id: core_satellite_kr
+  name: Core-Satellite (KR)
+  description: |
+    핵심 자산(코어)에 70%를 두고, 위성(섹터/테마/해외)에 30%를 배분.
+    코어로 안정성 확보, 위성으로 알파 기회 추구.
+  rebalance: quarterly
+  benchmark_ticker: "069500"
+  legs:
+    - { ticker: "069500", weight: 0.45, role: "코어 - 국내 주식 (KOSPI 200)" }
+    - { ticker: "273130", weight: 0.25, role: "코어 - 국내 채권 (종합채권)" }
+    - { ticker: "360750", weight: 0.15, role: "위성 - 미국 주식 (S&P500)" }
+    - { ticker: "133690", weight: 0.10, role: "위성 - 미국 나스닥100" }
+    - { ticker: "132030", weight: 0.05, role: "위성 - 금" }
