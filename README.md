@@ -96,6 +96,17 @@ data/               # gitignore. SQLite + Parquet 캐시
 | 총보수·상장일·벤치마크 | 위와 동일. |
 | 분배락 보정 (total return) | MVP는 가격 기준만. |
 
+## 모바일에서 Claude와 작업 이어가기
+
+핸드폰 브라우저에서 [claude.ai/code](https://claude.ai/code)에 접속하면 같은 GitHub repo로 작업을 이어갈 수 있습니다.
+
+1. Claude 계정으로 로그인
+2. GitHub 연동 (sdjcoding/deeppool 선택)
+3. 새 세션 시작 — Claude가 [`CLAUDE.md`](CLAUDE.md)를 자동으로 읽어 프로젝트 컨텍스트 + 결정/관행을 파악
+4. 한국어로 자연스럽게 대화 (예: "Strategies 페이지에 위험기여도 도넛 차트 추가해줘")
+
+데스크톱과 동일한 코드/스펙/문서가 모두 GitHub에 있어 컨텍스트 전환이 매끄럽습니다.
+
 ## 라이선스
 
 개인 프로젝트. 외부 배포 시 데이터 출처 약관 확인 필요.
