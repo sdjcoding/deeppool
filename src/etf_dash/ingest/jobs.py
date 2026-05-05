@@ -18,6 +18,7 @@ from etf_dash.domain.schemas import (
     issuer_from_name,
 )
 from etf_dash.providers.fdr_provider import FDRProvider
+from etf_dash.providers.naver_holdings import NaverHoldingsProvider
 from etf_dash.repository.etf_repository import ETFRepository
 
 logger = logging.getLogger(__name__)
@@ -151,6 +152,76 @@ def ingest_prices(
     return {
         "tickers_fetched": fetched_tickers,
         "rows_inserted": inserted,
+        "failed": len(failed),
+    }
+
+
+# --- holdings (Naver Finance scrape) -----------------------------------------
+
+
+def ingest_holdings(
+    repo: ETFRepository,
+    tickers: list[str] | None = None,
+    *,
+    provider: NaverHoldingsProvider | None = None,
+    as_of: date | None = None,
+    skip_recent_days: int = 7,
+) -> dict[str, int]:
+    """Pull Naver Finance constituent holdings per ticker.
+
+    - tickers=None: all active ETFs in repo.
+    - skip_recent_days: avoid re-scraping if we already have a snapshot newer
+      than this many days. Holdings change infrequently; weekly is plenty.
+    """
+    provider = provider or NaverHoldingsProvider()
+    settings = get_settings()
+    as_of = as_of or date.today()
+    sleep = settings.ingest.request_sleep_seconds
+
+    if tickers is None:
+        meta = repo.list_etfs(active_only=True)
+        tickers = meta["ticker"].astype(str).tolist()
+
+    fetched = 0
+    skipped = 0
+    empty = 0
+    failed: list[str] = []
+
+    for i, ticker in enumerate(tickers):
+        try:
+            last = repo.last_holdings_date(ticker)
+            if last and (as_of - last).days < skip_recent_days:
+                skipped += 1
+                continue
+            df = provider.get_holdings(ticker)
+            if df.empty:
+                empty += 1
+                repo.log_ingest(
+                    "holdings", "skip", ticker=ticker, message="no holdings table"
+                )
+                continue
+            repo.upsert_holdings(ticker, as_of, df)
+            fetched += 1
+        except Exception as exc:  # noqa: BLE001
+            failed.append(ticker)
+            repo.log_ingest("holdings", "error", ticker=ticker, message=str(exc))
+            logger.warning("holdings fetch failed for %s: %s", ticker, exc)
+        finally:
+            if sleep > 0 and i < len(tickers) - 1:
+                time.sleep(sleep)
+
+    repo.log_ingest(
+        "holdings",
+        "ok" if not failed else "partial",
+        message=(
+            f"fetched={fetched} skipped={skipped} empty={empty} "
+            f"failed={len(failed)} of {len(tickers)}"
+        ),
+    )
+    return {
+        "fetched": fetched,
+        "skipped": skipped,
+        "empty": empty,
         "failed": len(failed),
     }
 

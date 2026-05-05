@@ -51,6 +51,17 @@ CREATE TABLE IF NOT EXISTS etf_snapshot (
 );
 CREATE INDEX IF NOT EXISTS idx_snapshot_date ON etf_snapshot(snap_date);
 
+CREATE TABLE IF NOT EXISTS etf_holdings (
+  ticker TEXT NOT NULL,
+  as_of TEXT NOT NULL,
+  constituent_name TEXT NOT NULL,
+  shares REAL,
+  weight_pct REAL,
+  price REAL,
+  PRIMARY KEY (ticker, as_of, constituent_name)
+);
+CREATE INDEX IF NOT EXISTS idx_holdings_ticker ON etf_holdings(ticker, as_of);
+
 CREATE TABLE IF NOT EXISTS ingest_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   job TEXT NOT NULL,

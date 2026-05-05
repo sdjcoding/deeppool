@@ -152,6 +152,37 @@ def correlation_heatmap(corr: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def holdings_donut(holdings: pd.DataFrame, top_n: int = 10) -> go.Figure:
+    """Donut chart of constituent weights with an 'Others' slice for the tail."""
+    if holdings.empty:
+        return go.Figure()
+    df = holdings.sort_values("weight_pct", ascending=False).head(top_n).copy()
+    others_w = max(0.0, 100.0 - df["weight_pct"].sum())
+    labels = df["constituent_name"].tolist()
+    values = df["weight_pct"].tolist()
+    if others_w > 0.5:
+        labels.append("기타")
+        values.append(round(others_w, 2))
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=labels,
+                values=values,
+                hole=0.45,
+                textinfo="label+percent",
+                textposition="outside",
+                sort=False,
+            )
+        ]
+    )
+    fig.update_layout(
+        margin={"l": 10, "r": 10, "t": 10, "b": 10},
+        showlegend=False,
+        height=380,
+    )
+    return fig
+
+
 def asset_class_pie(by_class: pd.Series) -> go.Figure:
     fig = go.Figure(
         data=[go.Pie(labels=by_class.index.tolist(), values=by_class.values, hole=0.4)]

@@ -8,6 +8,7 @@ import logging
 import sys
 
 from etf_dash.ingest.jobs import (
+    ingest_holdings,
     ingest_meta_and_snapshot,
     ingest_prices,
     validate,
@@ -20,11 +21,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="etf_dash.ingest")
     parser.add_argument(
         "--job",
-        choices=["all", "meta", "prices", "validate"],
+        choices=["all", "meta", "prices", "holdings", "validate"],
         default="all",
         help="Which job to run. 'meta' updates etf_meta + today's snapshot. "
         "'prices' refreshes OHLCV (incremental by default). "
-        "'all' runs meta then prices.",
+        "'holdings' scrapes Naver Finance constituent table per ticker. "
+        "'all' runs meta then prices (holdings on its own schedule).",
     )
     parser.add_argument(
         "--ticker",
@@ -59,6 +61,8 @@ def main(argv: list[str] | None = None) -> int:
         summary["prices"] = ingest_prices(
             repo, tickers=args.ticker, provider=provider, full=args.full
         )
+    if args.job == "holdings":
+        summary["holdings"] = ingest_holdings(repo, tickers=args.ticker)
     if args.job == "validate":
         summary["validate"] = validate(repo)
 

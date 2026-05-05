@@ -220,6 +220,75 @@ class ETFRepository:
                 (job, ticker, datetime.now().isoformat(timespec="seconds"), status, message),
             )
 
+    # ------------------------------------------------------------------ holdings
+    def get_holdings(
+        self, ticker: str, as_of: date | None = None
+    ) -> pd.DataFrame:
+        """Latest available holdings if as_of is None."""
+        with connect(self._db_path) as conn:
+            if as_of is None:
+                row = conn.execute(
+                    "SELECT MAX(as_of) AS d FROM etf_holdings WHERE ticker = ?",
+                    (ticker,),
+                ).fetchone()
+                if row is None or row["d"] is None:
+                    return pd.DataFrame(
+                        columns=["constituent_name", "shares", "weight_pct", "price"]
+                    )
+                target = row["d"]
+            else:
+                target = as_of.isoformat()
+            return pd.read_sql_query(
+                "SELECT constituent_name, shares, weight_pct, price "
+                "FROM etf_holdings WHERE ticker = ? AND as_of = ? "
+                "ORDER BY weight_pct DESC",
+                conn,
+                params=(ticker, target),
+            )
+
+    def upsert_holdings(self, ticker: str, as_of: date, df: pd.DataFrame) -> int:
+        if df.empty:
+            return 0
+        as_of_str = as_of.isoformat()
+        rows = [
+            {
+                "ticker": ticker,
+                "as_of": as_of_str,
+                "constituent_name": r["constituent_name"],
+                "shares": r.get("shares"),
+                "weight_pct": r["weight_pct"],
+                "price": r.get("price"),
+            }
+            for _, r in df.iterrows()
+        ]
+        sql = """
+            INSERT INTO etf_holdings
+                (ticker, as_of, constituent_name, shares, weight_pct, price)
+            VALUES
+                (:ticker, :as_of, :constituent_name, :shares, :weight_pct, :price)
+            ON CONFLICT(ticker, as_of, constituent_name) DO UPDATE SET
+                shares=excluded.shares,
+                weight_pct=excluded.weight_pct,
+                price=excluded.price
+        """
+        with connect(self._db_path) as conn:
+            conn.execute("BEGIN")
+            try:
+                conn.executemany(sql, rows)
+                conn.commit()
+            except sqlite3.Error:
+                conn.rollback()
+                raise
+        return len(rows)
+
+    def last_holdings_date(self, ticker: str) -> date | None:
+        with connect(self._db_path) as conn:
+            row = conn.execute(
+                "SELECT MAX(as_of) AS d FROM etf_holdings WHERE ticker = ?",
+                (ticker,),
+            ).fetchone()
+        return _parse_date(row["d"]) if row and row["d"] else None
+
     def deactivate_missing(self, present_tickers: set[str]) -> int:
         """Mark tickers absent from `present_tickers` as inactive (delisted)."""
         with connect(self._db_path) as conn:

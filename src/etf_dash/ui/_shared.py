@@ -42,6 +42,54 @@ def cached_strategies():
     return load_strategies(STRATEGIES_YAML)
 
 
+@st.cache_data(ttl=3600)
+def cached_holdings(ticker: str) -> pd.DataFrame:
+    return get_repo().get_holdings(ticker)
+
+
+def fetch_holdings_now(ticker: str) -> tuple[bool, str]:
+    """User-triggered holdings fetch from Naver Finance.
+
+    Returns (ok, message). On success, also clears the cached_holdings cache
+    for this ticker so the UI sees the new rows immediately on rerun.
+    """
+    from datetime import date as _date
+
+    from etf_dash.providers.naver_holdings import NaverHoldingsProvider
+
+    repo = get_repo()
+    try:
+        df = NaverHoldingsProvider().get_holdings(ticker)
+    except Exception as exc:  # noqa: BLE001
+        return False, f"Naver 호출 실패: {type(exc).__name__}: {exc}"
+    if df.empty:
+        return False, "Naver Finance에 구성종목 표가 없습니다 (액티브/해외자산 ETF는 미공개일 수 있음)."
+    repo.upsert_holdings(ticker, _date.today(), df)
+    cached_holdings.clear()
+    return True, f"{len(df)}개 보유종목 적재 완료."
+
+
+def fetch_prices_now(ticker: str) -> tuple[bool, str]:
+    """User-triggered full-history price fetch for a single ticker."""
+    from datetime import date as _date, timedelta as _td
+
+    from etf_dash.providers.fdr_provider import FDRProvider
+
+    repo = get_repo()
+    end = _date.today()
+    start = end - _td(days=365 * 5)
+    try:
+        df = FDRProvider().get_ohlcv(ticker, start, end)
+    except Exception as exc:  # noqa: BLE001
+        return False, f"FDR 호출 실패: {type(exc).__name__}: {exc}"
+    if df.empty:
+        return False, "FDR이 빈 가격 데이터를 반환했습니다."
+    df.insert(0, "ticker", ticker)
+    n = repo.upsert_prices(df)
+    cached_prices.clear()
+    return True, f"{n}개 일봉 적재 완료."
+
+
 def show_data_health(repo: ETFRepository) -> None:
     """Top-of-page banner showing cache freshness and any 'no data' guidance."""
     last_meta = repo.last_meta_update()
