@@ -21,6 +21,7 @@ uv.lock
 data/cache.db
 data/cache.db-*
 data/holdings/
+data/*.log
 
 # Streamlit
 .streamlit/secrets.toml
