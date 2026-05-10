@@ -26,6 +26,12 @@ class UIConfig(BaseModel):
     cache_ttl_seconds: int = 3600
 
 
+class LLMConfig(BaseModel):
+    model: str = "claude-sonnet-4-6"
+    max_tokens_etf: int = 700
+    max_tokens_strategy: int = 1100
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",
@@ -36,6 +42,7 @@ class Settings(BaseSettings):
     cache: CacheConfig = CacheConfig()
     ingest: IngestConfig = IngestConfig()
     ui: UIConfig = UIConfig()
+    llm: LLMConfig = LLMConfig()
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

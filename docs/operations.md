@@ -122,6 +122,37 @@ The gate uses `hmac.compare_digest` (constant-time comparison) and stores
 `authenticated=True` in `st.session_state` after one successful entry per
 browser session.
 
+### Enabling AI 해설 (Anthropic API key)
+
+ETF Detail and Strategies pages have a "🤖 AI 해설" expander that calls the
+Anthropic API for a Korean-language summary. Without a key, the section shows
+a configuration hint and the rest of the dashboard works normally.
+
+```bash
+# 1. Get an API key from https://console.anthropic.com (Workspace API Key)
+
+# 2. Add to secrets.toml
+$EDITOR .streamlit/secrets.toml
+# add a line:
+#   anthropic_api_key = "sk-ant-api03-..."
+
+# 3. Restart Streamlit (Ctrl+C in the run terminal, then ./scripts/run_dashboard.sh)
+```
+
+**Cost control:**
+
+- Default model is `claude-sonnet-4-6` ($3/$15 per 1M tokens). Override in
+  `config/settings.yaml` → `llm.model` to `claude-haiku-4-5` (~1/3 cost) or
+  `claude-opus-4-7` (best quality, ~5x cost).
+- Calls use `thinking: disabled` + `effort: low` (configured in code) — minimum
+  tokens spent.
+- Streamlit caches results for 24h per (ticker, metrics signature), so the
+  same ETF/strategy never re-hits the API the same day.
+- Estimated cost per call: ETF ≈ $0.005, strategy ≈ $0.008. Realistic monthly
+  cost for casual personal use: under $5.
+
+Verify spend at https://console.anthropic.com → Usage.
+
 ### Exposing to the internet (ngrok)
 
 For external access from your phone or other networks:

@@ -6,7 +6,12 @@ import pandas as pd
 import streamlit as st
 
 from etf_dash.analysis import backtest
-from etf_dash.ui._shared import cached_prices, cached_strategies
+from etf_dash.ui._shared import (
+    cached_explain_strategy,
+    cached_prices,
+    cached_strategies,
+    has_explainer,
+)
 from etf_dash.ui.auth import require_password
 from etf_dash.ui.components.charts import (
     drawdown_chart,
@@ -115,6 +120,28 @@ st.plotly_chart(
 # --- summary metrics ---
 st.subheader("요약 지표")
 st.dataframe(format_metrics_table(result.summary), hide_index=True, width="stretch")
+
+# --- AI 해설 (optional, click-to-fetch) ---
+with st.expander("🤖 AI 전략 해설 (Claude Sonnet)", expanded=False):
+    if not has_explainer():
+        st.info(
+            "Anthropic API 키 미설정. `.streamlit/secrets.toml`에 "
+            "`anthropic_api_key = \"sk-ant-...\"`를 추가하고 재시작하세요."
+        )
+    else:
+        st.caption(
+            "버튼을 누르면 Claude가 위 백테스트 결과를 한국어 350~400자로 평가합니다. "
+            "같은 전략은 하루 1회만 실제 API 호출."
+        )
+        if st.button("AI 해설 받기", key="ai_strat"):
+            sig = (
+                f"{result.summary.get('total_return'):.4f}|"
+                f"{result.summary.get('sharpe'):.4f}|"
+                f"{result.start}|{result.end}"
+            )
+            with st.spinner("Claude 호출 중…"):
+                text = cached_explain_strategy(choice.id, sig)
+            st.write(text or "_(빈 응답)_")
 
 # --- drawdown + yearly ---
 col1, col2 = st.columns(2)

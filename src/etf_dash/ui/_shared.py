@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from etf_dash.analysis.llm_explainer import Explainer, get_default_explainer
 from etf_dash.analysis.strategies import load_strategies
 from etf_dash.config import PROJECT_ROOT, get_settings
 from etf_dash.repository.etf_repository import ETFRepository
@@ -45,6 +46,74 @@ def cached_strategies():
 @st.cache_data(ttl=3600)
 def cached_holdings(ticker: str) -> pd.DataFrame:
     return get_repo().get_holdings(ticker)
+
+
+# --- LLM explainer (cached so repeats don't burn API budget) -----------------
+
+
+@st.cache_resource
+def get_explainer() -> Explainer:
+    """Resolve API key from secrets.toml or env, return ClaudeExplainer or NullExplainer."""
+    api_key: str | None = None
+    try:
+        api_key = st.secrets.get("anthropic_api_key")
+    except (FileNotFoundError, AttributeError):
+        pass
+    return get_default_explainer(api_key=api_key)
+
+
+def has_explainer() -> bool:
+    """True iff a real (non-Null) explainer is configured."""
+    from etf_dash.analysis.llm_explainer import NullExplainer
+
+    return not isinstance(get_explainer(), NullExplainer)
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def cached_explain_etf(ticker: str, _metrics_signature: str) -> str:
+    """Cache key: (ticker, metrics_signature). Same inputs → 1 API call per day.
+
+    `_metrics_signature` is a stringified hash of the metrics dict so different
+    inputs invalidate the cache; the underscore prefix tells Streamlit to skip
+    serializing the value for the hash key (it's already in the string).
+    """
+    repo = get_repo()
+    meta = repo.get_etf(ticker)
+    if meta is None:
+        return ""
+    # Re-derive metrics inside the cached fn so we don't depend on caller state.
+    from etf_dash.analysis import metrics as metrics_mod
+
+    prices_df = get_repo().get_prices(ticker)
+    if prices_df.empty:
+        return ""
+    summary = metrics_mod.summary(prices_df.set_index("date")["close"])
+    return get_explainer().explain_etf(meta, summary)
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def cached_explain_strategy(strategy_id: str, _result_signature: str) -> str:
+    """Same caching pattern for strategy explanations."""
+    from etf_dash.analysis import backtest as backtest_mod
+
+    strategies = cached_strategies()
+    strategy = next((s for s in strategies if s.id == strategy_id), None)
+    if strategy is None:
+        return ""
+    leg_tickers = tuple(leg.ticker for leg in strategy.legs)
+    prices_long = get_repo().get_prices(list(leg_tickers))
+    if prices_long.empty:
+        return ""
+    prices_wide = prices_long.pivot(index="date", columns="ticker", values="close")
+    if any(t not in prices_wide.columns for t in leg_tickers):
+        return ""
+    bench_series = None
+    if strategy.benchmark_ticker:
+        bench_long = get_repo().get_prices(strategy.benchmark_ticker)
+        if not bench_long.empty:
+            bench_series = bench_long.set_index("date")["close"]
+    result = backtest_mod.simulate(strategy, prices_wide, benchmark_prices=bench_series)
+    return get_explainer().explain_strategy(strategy, result)
 
 
 def fetch_holdings_now(ticker: str) -> tuple[bool, str]:

@@ -6,6 +6,7 @@ import streamlit as st
 
 from etf_dash.analysis import metrics
 from etf_dash.ui._shared import (
+    cached_explain_etf,
     cached_holdings,
     cached_meta,
     cached_prices,
@@ -13,6 +14,7 @@ from etf_dash.ui._shared import (
     fetch_holdings_now,
     fetch_prices_now,
     get_repo,
+    has_explainer,
 )
 from etf_dash.ui.auth import require_password
 from etf_dash.ui.components.charts import holdings_donut, price_line
@@ -78,6 +80,25 @@ st.plotly_chart(price_line(sliced, title=""), width="stretch")
 st.subheader("성과 지표")
 summary = metrics.summary(prices)
 st.dataframe(format_metrics_table(summary), hide_index=True, width="stretch")
+
+# --- AI 해설 (optional, click-to-fetch) ---
+with st.expander("🤖 AI 해설 (Claude Sonnet)", expanded=False):
+    if not has_explainer():
+        st.info(
+            "Anthropic API 키 미설정. `.streamlit/secrets.toml`에 "
+            "`anthropic_api_key = \"sk-ant-...\"`를 추가하고 재시작하세요. "
+            "API 키는 https://console.anthropic.com 에서 발급."
+        )
+    else:
+        st.caption(
+            "버튼을 누르면 Claude가 위 지표들을 한국어 200~300자로 해설합니다. "
+            "같은 ETF는 하루 1회만 실제 API 호출 (이후 캐시)."
+        )
+        if st.button("AI 해설 받기", key="ai_etf"):
+            sig = f"{summary.get('total_return_1y'):.4f}|{summary.get('sharpe'):.4f}"
+            with st.spinner("Claude 호출 중…"):
+                text = cached_explain_etf(ticker, sig)
+            st.write(text or "_(빈 응답)_")
 
 # --- holdings (Naver Finance) ---
 st.markdown("---")
