@@ -15,15 +15,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Literal
 
-import numpy as np
 import pandas as pd
 
 from etf_dash.analysis import metrics
-from etf_dash.domain.models import Strategy
-
-RebalanceFreq = Literal["none", "monthly", "quarterly", "yearly"]
+from etf_dash.domain.models import RebalanceFreq, Strategy
 
 
 @dataclass
@@ -135,10 +131,15 @@ def _rebalance_dates(index: pd.DatetimeIndex, freq: RebalanceFreq) -> set[pd.Tim
     if freq == "none" or len(index) < 2:
         return dates
 
-    if freq == "monthly":
+    if freq == "weekly":
+        period_key = index.to_period("W")
+    elif freq == "monthly":
         period_key = index.to_period("M")
     elif freq == "quarterly":
         period_key = index.to_period("Q")
+    elif freq == "semi_annual":
+        # pandas has no 6-month period; key each date to its calendar half.
+        period_key = [f"{ts.year}-H{(ts.month - 1) // 6}" for ts in index]
     elif freq == "yearly":
         period_key = index.to_period("Y")
     else:
