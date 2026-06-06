@@ -156,6 +156,47 @@ def test_build_plan_within_band_holds():
     assert all(a.action == "유지" for a in plan.actions)
 
 
+def test_weight_band_triggers_when_leg_leaves_band():
+    """Browne-style 15/35 band: rebalance only when a leg leaves [15%, 35%]."""
+    strat = _strategy(
+        (
+            StrategyLeg("A", 0.25, ""),
+            StrategyLeg("B", 0.25, ""),
+            StrategyLeg("C", 0.25, ""),
+            StrategyLeg("D", 0.25, ""),
+        ),
+        rebalance="yearly",
+    )
+    # A at 36% (>35%), B at 14% (<15%) -> outside band -> rebalance.
+    plan = rebalancing.build_plan(
+        strat,
+        current_values={"A": 3_600_000, "B": 1_400_000, "C": 2_500_000, "D": 2_500_000},
+        weight_band=(0.15, 0.35),
+    )
+    assert plan.needs_rebalance is True
+    assert "밴드" in plan.note
+
+
+def test_weight_band_holds_despite_large_drift():
+    """Band rule is more lenient than drift: 34/16/25/25 has 9% drift but stays
+    within [15%, 35%], so no rebalance — even though drift_band(5%) would fire."""
+    strat = _strategy(
+        (
+            StrategyLeg("A", 0.25, ""),
+            StrategyLeg("B", 0.25, ""),
+            StrategyLeg("C", 0.25, ""),
+            StrategyLeg("D", 0.25, ""),
+        )
+    )
+    holdings = {"A": 3_400_000, "B": 1_600_000, "C": 2_500_000, "D": 2_500_000}
+    band_plan = rebalancing.build_plan(strat, current_values=holdings, weight_band=(0.15, 0.35))
+    drift_plan = rebalancing.build_plan(strat, current_values=holdings)  # default drift_band
+    assert band_plan.needs_rebalance is False
+    assert band_plan.max_drift == pytest.approx(0.09)
+    # Same holdings under the default drift rule would trigger.
+    assert drift_plan.needs_rebalance is True
+
+
 def test_build_plan_rejects_zero_holdings():
     strat = _strategy((StrategyLeg("A", 1.0, ""),))
     with pytest.raises(ValueError, match="current_values"):

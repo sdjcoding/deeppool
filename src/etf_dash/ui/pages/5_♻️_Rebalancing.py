@@ -114,6 +114,30 @@ else:
                     key=f"cur_{leg.ticker}",
                 )
             )
+
+    # --- rebalancing trigger rule ---
+    trigger = st.radio(
+        "리밸런싱 기준",
+        options=["드리프트 밴드", "절대 비중 밴드 (Browne)"],
+        horizontal=True,
+        help=(
+            "드리프트 밴드: 목표 비중에서 ±기준% 이상 벗어나면 권장. "
+            "절대 비중 밴드: 어떤 자산이라도 하한~상한(%) 범위를 벗어나면 권장 "
+            "(영구 포트폴리오의 35/15 규칙)."
+        ),
+    )
+    weight_band = None
+    drift_band = 0.05
+    if trigger == "드리프트 밴드":
+        drift_band = (
+            st.slider("허용 드리프트 (±%)", min_value=1, max_value=20, value=5) / 100.0
+        )
+    else:
+        bc1, bc2 = st.columns(2)
+        low = bc1.number_input("하한 (%)", min_value=0, max_value=100, value=15, step=1)
+        high = bc2.number_input("상한 (%)", min_value=0, max_value=100, value=35, step=1)
+        weight_band = (low / 100.0, high / 100.0)
+
     if sum(current_values.values()) <= 0:
         st.info("평가액을 입력하면 조정 제안이 표시됩니다.")
         st.stop()
@@ -122,6 +146,8 @@ else:
         current_values=current_values,
         latest_prices=latest_prices or None,
         freq=freq,
+        drift_band=drift_band,
+        weight_band=weight_band,
     )
 
 # --- banner + schedule ---

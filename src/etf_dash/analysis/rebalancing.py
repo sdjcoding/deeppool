@@ -78,6 +78,7 @@ def build_plan(
     as_of: date | None = None,
     freq: RebalanceFreq | None = None,
     drift_band: float = 0.05,
+    weight_band: tuple[float, float] | None = None,
 ) -> RebalancePlan:
     """Produce concrete buy/sell actions to move ``strategy`` to target weights.
 
@@ -88,8 +89,13 @@ def build_plan(
         compare against target weights of the total and emit 증액/감액/유지.
 
     ``latest_prices`` (ticker -> price), when given, turns the KRW deltas into
-    share counts. ``drift_band`` is the max-drift threshold (fraction) above which
-    ``needs_rebalance`` is flagged.
+    share counts.
+
+    Trigger for ``needs_rebalance`` (besides initial build):
+      * Default — ``max_drift > drift_band`` (drift from target weight).
+      * ``weight_band=(low, high)`` — Harry Browne style absolute-weight band:
+        rebalance only when any leg's current weight leaves ``[low, high]``
+        (e.g. ``(0.15, 0.35)``). Takes precedence over ``drift_band`` when set.
     """
     strategy.validate()
     as_of = as_of or date.today()
@@ -107,17 +113,25 @@ def build_plan(
         if total <= 0:
             raise ValueError("sum of current_values must be positive")
 
-    # First pass: drift drives the overall rebalance decision.
-    max_drift = max(
-        abs((0.0 if is_initial else values[leg.ticker] / total) - leg.weight)
+    weights = {
+        leg.ticker: (0.0 if is_initial else values[leg.ticker] / total)
         for leg in strategy.legs
-    )
-    needs_rebalance = is_initial or max_drift > drift_band
+    }
+    max_drift = max(abs(weights[leg.ticker] - leg.weight) for leg in strategy.legs)
+
+    # Decide whether a rebalance is warranted.
+    if is_initial:
+        needs_rebalance = True
+    elif weight_band is not None:
+        low, high = weight_band
+        needs_rebalance = any(not (low <= weights[leg.ticker] <= high) for leg in strategy.legs)
+    else:
+        needs_rebalance = max_drift > drift_band
 
     actions: list[RebalanceAction] = []
     for leg in strategy.legs:
         current_value = values[leg.ticker]
-        current_weight = 0.0 if is_initial else current_value / total
+        current_weight = weights[leg.ticker]
         target_value = total * leg.weight
         delta_value = target_value - current_value
 
@@ -141,7 +155,9 @@ def build_plan(
             )
         )
 
-    note = _build_note(strategy, freq, is_initial, needs_rebalance, max_drift, drift_band)
+    note = _build_note(
+        strategy, freq, is_initial, needs_rebalance, max_drift, drift_band, weight_band
+    )
 
     return RebalancePlan(
         strategy_id=strategy.id,
@@ -211,12 +227,22 @@ def _build_note(
     needs_rebalance: bool,
     max_drift: float,
     drift_band: float,
+    weight_band: tuple[float, float] | None = None,
 ) -> str:
     if is_initial:
         return (
             f"신규 건仓: '{strategy.name}'의 목표 비중대로 분할 매수하세요. "
             f"이후 {freq} 주기로 점검합니다."
         )
+    if weight_band is not None:
+        low, high = weight_band
+        rule = f"비중 밴드 {low * 100:.0f}~{high * 100:.0f}%"
+        if needs_rebalance:
+            return (
+                f"리밸런싱 권장: 일부 자산이 {rule}를 벗어났습니다. "
+                "아래 매수/매도로 목표 비중을 회복하세요."
+            )
+        return f"유지 권장: 모든 자산이 {rule} 이내입니다. 다음 정기 점검까지 조정 불필요."
     if needs_rebalance:
         return (
             f"리밸런싱 권장: 최대 드리프트 {max_drift * 100:.1f}%가 허용 밴드 "
