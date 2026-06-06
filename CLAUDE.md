@@ -15,9 +15,13 @@ This file gives Claude Code (CLI / web / IDE) durable context about the project 
 
 Included:
 - **A** ETF Screener · **B** ETF Detail · **E** Strategy backtest templates · **F** Market/macro analysis
+- **G** Rebalancing advisor (added on user request 2026-06) — periodic 건仓/조仓 advice for
+  fixed-target strategies (incl. Permanent Portfolio). NOT an optimizer; see exclusion below.
 
 **Explicitly excluded** (don't add unprompted, even if "easy"):
-- User-defined portfolio builder / Markowitz / risk-parity optimization
+- User-defined portfolio builder / Markowitz / risk-parity optimization. (The rebalancing
+  advisor only nudges holdings back to a strategy's *fixed* target weights — it never *chooses*
+  weights, so it stays on the allowed side of this line.)
 - LLM-generated narratives (interface stub `analysis/llm_explainer.py` only — `NullExplainer` lives there)
 - Overseas ETFs (US/EU/JP). `region` column reserved but only KR populated.
 - User authentication beyond the single shared password gate
@@ -45,12 +49,12 @@ src/etf_dash/
 ├── providers/      # DataProvider Protocol + FDRProvider (only impl)
 ├── repository/     # SQLite (raw sqlite3) — etf_meta, etf_price, etf_snapshot, ingest_log
 ├── ingest/         # CLI: `python -m etf_dash.ingest --job all|meta|prices|validate`
-├── analysis/       # metrics · backtest · correlation · flows · strategies · llm_explainer (stub)
-└── ui/             # Streamlit: app.py + pages/ + components/ + auth.py
+├── analysis/       # metrics · backtest · correlation · flows · strategies · rebalancing · llm_explainer (stub)
+└── ui/             # Streamlit: app.py + pages/ (5) + components/ + auth.py
 config/
 ├── settings.yaml   # cache paths, ingest tunables
-└── strategies.yaml # 3 templates: all_weather_kr, classic_60_40, core_satellite_kr
-tests/unit/         # 21 golden-data tests (metrics + backtest + yaml)
+└── strategies.yaml # 4 templates: all_weather_kr, classic_60_40, core_satellite_kr, permanent_portfolio_kr
+tests/unit/         # 50 golden-data tests (metrics + backtest + rebalancing + yaml)
 data/               # gitignored. SQLite + future Parquet holdings cache
 ```
 
@@ -88,14 +92,18 @@ External access via ngrok: see `docs/operations.md`.
 **Done (MVP shipped):**
 - Bootstrap, GitHub repo, FDR pivot
 - Domain + repository + ingest CLI (1099 ETFs ingested)
-- Analysis layer (metrics + backtest + correlation + flows) with 21 unit tests
-- 3 strategy templates with real-data validation (Sharpe 0.99–1.23 over 5y)
-- Streamlit UI: 4 pages + components + password gate
+- Analysis layer (metrics + backtest + correlation + flows + rebalancing) with 50 unit tests
+- 4 strategy templates with real-data validation (incl. Permanent Portfolio `permanent_portfolio_kr`)
+- Rebalancing advisor (`analysis/rebalancing.py`): build_plan(건仓/조仓 buy-sell sizing),
+  cadence comparison (weekly/monthly/quarterly/semi_annual/yearly), drift-band & Browne 35/15
+  weight-band triggers. UI page `5_♻️_Rebalancing.py`.
+- Streamlit UI: 5 pages + components + password gate
 - Helper scripts (`scripts/run_dashboard.sh`, `scripts/run_tunnel.sh`)
 - Docs: README, `docs/spec.md`, `docs/data-sources.md`, `docs/operations.md`
 
 **Likely next** (only on user request):
-- Full price ingest for all 1099 ETFs (currently only 8 strategy tickers have 5y history)
+- Price ingest for `153130` (KODEX 단기채권, Permanent Portfolio cash leg — new in 2026-06)
+- Full price ingest for all 1099 ETFs (currently only ~8 strategy tickers have 5y history)
 - Set up daily refresh via launchd/cron
 - Naver Finance scraper for holdings / expense_ratio (deferred)
 - LLM explainer impl (Claude API) for ETF/strategy narrative
