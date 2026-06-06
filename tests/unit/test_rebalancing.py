@@ -175,6 +175,11 @@ def test_weight_band_triggers_when_leg_leaves_band():
     )
     assert plan.needs_rebalance is True
     assert "밴드" in plan.note
+    # C and D are exactly on target (delta 0) — they should read 유지, not 감액,
+    # even though the overall plan needs a rebalance.
+    c = next(a for a in plan.actions if a.ticker == "C")
+    assert c.delta_value == pytest.approx(0.0)
+    assert c.action == "유지"
 
 
 def test_weight_band_holds_despite_large_drift():

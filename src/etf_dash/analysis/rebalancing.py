@@ -151,7 +151,7 @@ def build_plan(
                 delta_value=delta_value,
                 current_price=price,
                 delta_shares=delta_shares,
-                action=_action_label(is_initial, needs_rebalance, delta_value),
+                action=_action_label(is_initial, needs_rebalance, delta_value, target_value),
             )
         )
 
@@ -206,16 +206,21 @@ def compare_rebalance_frequencies(
 # --- internal helpers ---------------------------------------------------------
 
 
-def _action_label(is_initial: bool, needs_rebalance: bool, delta_value: float) -> str:
+def _action_label(
+    is_initial: bool, needs_rebalance: bool, delta_value: float, target_value: float
+) -> str:
     """Korean label for a single leg's required move.
 
     When the portfolio is within band (``needs_rebalance`` False) we mark every
-    leg as 유지 so the advice matches the overall hold decision; otherwise the
-    sign of the delta dictates 증액 vs 감액.
+    leg as 유지 so the advice matches the overall hold decision. Otherwise the
+    sign of the delta dictates 증액 vs 감액 — but a leg already on target (delta
+    ~0) stays 유지 even while other legs trigger the rebalance.
     """
     if is_initial:
         return "건仓"
     if not needs_rebalance:
+        return "유지"
+    if abs(delta_value) <= 1e-9 * max(target_value, 1.0):
         return "유지"
     return "증액" if delta_value > 0 else "감액"
 
