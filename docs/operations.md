@@ -223,3 +223,38 @@ cp data/cache.db data/cache.$(date +%Y%m%d).db.bak
 # Reset everything (will require re-ingest from scratch)
 rm -rf data/cache.db data/cache.db-shm data/cache.db-wal data/holdings/
 ```
+
+## 공개 분석 리포트 게시 (GitHub Pages)
+
+전략 백테스트 + 영구 포트폴리오 리밸런싱 현황 + 시장 스냅샷을 **정적 HTML 한 장**으로
+만들어 추측 어려운 URL로 공개한다. 앱(비번 게이트)과 분리된 읽기 전용 스냅샷이다.
+
+### 1회 설정
+1. GitHub → 저장소 **Settings → Pages → Source: "Deploy from a branch",
+   Branch: `gh-pages` / `(root)`** 로 지정.
+2. 첫 게시 후 URL: `https://<user>.github.io/<repo>/<slug>/`
+   - `<slug>`는 `config/report.local.yaml`에 자동 저장되는 무작위 토큰(gitignored).
+     이 파일을 백업해 두면 URL이 고정된다.
+
+### 생성 + 게시
+```bash
+# (권장) 먼저 데이터 신선화 — 영구 포트폴리오 현금성 레그 153130 포함
+uv run python -m etf_dash.ingest --job prices --full \
+  --ticker 069500 --ticker 148070 --ticker 132030 --ticker 153130
+
+# 로컬 미리보기만 (./site 생성)
+scripts/build_report.sh
+open site/$(grep report_slug config/report.local.yaml | awk '{print $2}')/index.html
+
+# 빌드 + gh-pages 푸시 (공개 게시)
+scripts/publish_report.sh
+```
+
+### 매일 자동 (macOS launchd 예시)
+`~/Library/LaunchAgents/com.deeppool.report.plist`에 등록해 매일 1회 ingest→publish.
+(cron 사용 시 `0 8 * * * cd /path/to/deeppool && scripts/publish_report.sh`)
+
+### 비고
+- 공개 범위: `<meta robots noindex>` + `robots.txt Disallow`로 검색 비색인.
+  단 저장소가 공개라 gh-pages 경로는 열람 가능 — **초기 테스트용**으로 충분한 수준.
+- 데이터가 비어 있으면 각 전략 행에 "ingest 필요"로 표시되고 나머지는 정상 렌더된다.

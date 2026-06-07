@@ -50,6 +50,7 @@ src/etf_dash/
 ├── repository/     # SQLite (raw sqlite3) — etf_meta, etf_price, etf_snapshot, ingest_log
 ├── ingest/         # CLI: `python -m etf_dash.ingest --job all|meta|prices|validate`
 ├── analysis/       # metrics · backtest · correlation · flows · strategies · rebalancing · llm_explainer (stub)
+├── reporting/      # static public HTML report (report_data + render + __main__) — sink layer like ui/
 └── ui/             # Streamlit: app.py + pages/ (5) + components/ + auth.py
 config/
 ├── settings.yaml   # cache paths, ingest tunables
@@ -98,6 +99,9 @@ External access via ngrok: see `docs/operations.md`.
   cadence comparison (weekly/monthly/quarterly/semi_annual/yearly), drift-band & Browne 35/15
   weight-band triggers. UI page `5_♻️_Rebalancing.py`.
 - Streamlit UI: 5 pages + components + password gate
+- Public static report (`reporting/`): 전략+리밸런싱+시장 단일 HTML, 무작위 슬러그(noindex),
+  로컬 생성 후 gh-pages 게시. CLI `python -m etf_dash.reporting`, scripts
+  `build_report.sh`/`publish_report.sh`. 슬러그는 gitignored `config/report.local.yaml`.
 - Helper scripts (`scripts/run_dashboard.sh`, `scripts/run_tunnel.sh`)
 - Docs: README, `docs/spec.md`, `docs/data-sources.md`, `docs/operations.md`
 

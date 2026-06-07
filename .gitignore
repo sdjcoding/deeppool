@@ -26,6 +26,11 @@ data/*.log
 # Streamlit
 .streamlit/secrets.toml
 
+# Public report (generated locally; published to gh-pages)
+site/
+.ghpages/
+config/report.local.yaml
+
 # Env / secrets
 .env
 .env.local
