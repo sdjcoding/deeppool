@@ -8,8 +8,9 @@ KRX 상장 ETF를 한 곳에서 탐색·분석하고, 검증된 자산배분 전
 |---|---|
 | 🔍 **Screener** | 1,099개 KRX ETF를 자산군·운용사·이름으로 필터링/정렬/비교 (정규화 가격 오버레이) |
 | 📈 **ETF Detail** | 가격 차트(1M/3M/1Y/3Y/MAX), 수익률·변동성·MDD·Sharpe, NAV/시총 추이 |
-| 🧭 **Strategies** | All Weather · 60/40 · Core-Satellite 백테스트 (equity curve, drawdown, 연도별 수익률, 벤치마크 비교) |
+| 🧭 **Strategies** | All Weather · 60/40 · Core-Satellite · 영구 포트폴리오 백테스트 (equity curve, drawdown, 연도별 수익률, 벤치마크 비교) |
 | 🌐 **Market** | 자산군 분포, 오늘의 등락 Top 10, 자금유입/유출 추정, 상관관계 히트맵 |
+| ♻️ **Rebalancing** | 영구 포트폴리오 등 고정비중 전략의 정기 건仓/조仓 제안 — 보유액 입력 시 매수/매도 금액·주수, 다음 리밸런싱 예정일, 주/월/분기/반기/연 주기 비교 백테스트 (드리프트 밴드 / 35·15 비중 밴드 트리거) |
 
 ## 빠른 시작
 
@@ -40,7 +41,7 @@ cp .streamlit/secrets.toml.example .streamlit/secrets.toml
 # 또는: uv run streamlit run src/etf_dash/ui/app.py
 ```
 
-브라우저에서 `http://localhost:8501` 접속 → 비밀번호 입력 → 4개 페이지 사용.
+브라우저에서 `http://localhost:8501` 접속 → 비밀번호 입력 → 5개 페이지 사용.
 
 **외부에서 접속하려면** ngrok 설정: [docs/operations.md](docs/operations.md)의 "Exposing to the internet (ngrok)" 절 참고.
 
@@ -67,7 +68,7 @@ src/etf_dash/
 ├── providers/      # FDRProvider (DataProvider Protocol 구현)
 ├── repository/     # SQLite + Parquet 영속성 (raw SQL)
 ├── ingest/         # 일배치 잡 + CLI (`python -m etf_dash.ingest`)
-├── analysis/       # metrics · backtest · correlation · flows · strategies
+├── analysis/       # metrics · backtest · correlation · flows · strategies · rebalancing
 └── ui/             # Streamlit 진입점 (app.py + pages/)
 config/
 ├── settings.yaml   # 캐시 경로, ingest 파라미터

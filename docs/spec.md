@@ -282,3 +282,37 @@ def simulate(strategy, prices, start, end, initial=1e7) -> BacktestResult
 - `streamlit run src/etf_dash/ui/app.py` — 4개 페이지 진입, Screener에서 069500 클릭 → Detail에서 차트·지표·보유종목 렌더링
 - 알려진 ETF(예: 069500 KODEX 200) 1년 수익률을 운용사 공시와 스폿 체크 (±0.5%p 허용)
 - 60/40 전략 백테스트 결과의 equity curve가 단조 증가/감소 구간이 시장 흐름과 일치하는지 시각 검증
+
+---
+
+## 부록 — 기능 G: 정기 리밸런싱 제안 (2026-06 추가, MVP 이후)
+
+사용자 요청으로 추가. "永恒投资(영구 포트폴리오)" 이론에 따라 고정 목표비중 전략에 대해
+정기적인 건仓(매수)·감仓(매도)·조仓(리밸런싱) 제안을 제공한다. **최적화기가 아니다** —
+비중은 전략 YAML에 이미 정의된 *고정* 목표값이며, 본 기능은 그 값으로 되돌리는 조정만 한다
+(따라서 "사용자 정의 포트폴리오/Markowitz 제외" 원칙을 위반하지 않음).
+
+**추가 전략**: `permanent_portfolio_kr` — 주식(069500)·장기국채(148070)·금(132030)·
+단기채 현금성(153130) 각 25%. 현금은 단기채 ETF로 대체.
+
+**리밸런싱 주기 확장**: `RebalanceFreq`에 `weekly`·`semi_annual` 추가 →
+`none/weekly/monthly/quarterly/semi_annual/yearly` 6종 (`backtest._rebalance_dates`).
+
+**핵심 인터페이스** (`analysis/rebalancing.py`, 순수 함수):
+```
+build_plan(strategy, current_values, *, total_capital, latest_prices, freq,
+           drift_band=0.05, weight_band=None) -> RebalancePlan
+  - current_values=None → 신규 건仓(총 투자금 분할), 아니면 조仓(목표비중 회복)
+  - 트리거: 기본 드리프트 밴드(±%) / weight_band=(low,high) 시 Browne 35/15 절대 비중 밴드
+  - latest_prices 제공 시 매수·매도 주수 산출
+next_rebalance_date(freq, from_date) -> date | None   # 다음 정기 실행일
+compare_rebalance_frequencies(strategy, prices_wide, ...) -> DataFrame  # 주기별 성과 비교
+```
+도메인: `RebalanceAction`, `RebalancePlan` (`domain/models.py`).
+
+**UI**: `pages/5_♻️_Rebalancing.py` — ① 건仓/조仓 어드바이저(보유액 입력 → 매수/매도
+금액·주수 + 다음 실행일) ② 주/월/분기/반기/연 주기 비교 백테스트.
+
+**검증**: `pytest tests/unit/test_rebalancing.py` (밴드·드리프트·주기·건仓 골든 테스트).
+영구 포트폴리오 백테스트는 `153130` 가격 적재 필요:
+`uv run python -m etf_dash.ingest --job prices --full --ticker 153130`.

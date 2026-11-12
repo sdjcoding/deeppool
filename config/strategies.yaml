@@ -45,3 +45,18 @@
     - { ticker: "360750", weight: 0.15, role: "위성 - 미국 주식 (S&P500)" }
     - { ticker: "133690", weight: 0.10, role: "위성 - 미국 나스닥100" }
     - { ticker: "132030", weight: 0.05, role: "위성 - 금" }
+
+- id: permanent_portfolio_kr
+  name: 영구 포트폴리오 (Permanent Portfolio)
+  description: |
+    Harry Browne의 Permanent Portfolio를 KRX 상장 ETF로 매핑.
+    주식·장기국채·금·단기채(현금성)에 25%씩 균등 배분해 호황·불황·인플레·디플레
+    네 국면 모두에 대비하는 가장 단순·방어적인 영구 보유형 전략.
+    현금성은 단기채 ETF로 대체했으며, 보통 연 1회(또는 비중 이탈 시) 리밸런싱한다.
+  rebalance: yearly
+  benchmark_ticker: "069500"
+  legs:
+    - { ticker: "069500", weight: 0.25, role: "주식 (KOSPI 200)" }
+    - { ticker: "148070", weight: 0.25, role: "장기 국채 (KOSEF 국고채10년)" }
+    - { ticker: "132030", weight: 0.25, role: "금 (KODEX 골드선물)" }
+    - { ticker: "153130", weight: 0.25, role: "현금성 (KODEX 단기채권)" }

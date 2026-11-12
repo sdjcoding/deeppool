@@ -22,7 +22,9 @@ class ETFMeta:
     updated_at: datetime | None = None
 
 
-RebalanceFreq = Literal["none", "monthly", "quarterly", "yearly"]
+RebalanceFreq = Literal[
+    "none", "weekly", "monthly", "quarterly", "semi_annual", "yearly"
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,3 +56,34 @@ class Strategy:
             seen.add(leg.ticker)
             if leg.weight <= 0:
                 raise ValueError(f"Strategy {self.id!r} leg {leg.ticker} weight must be > 0")
+
+
+@dataclass(frozen=True, slots=True)
+class RebalanceAction:
+    """A single buy/sell instruction to move one leg toward its target weight."""
+
+    ticker: str
+    role: str
+    target_weight: float
+    current_weight: float
+    current_value: float  # KRW
+    target_value: float  # KRW
+    delta_value: float  # target - current; >0 매수(건仓/증액), <0 매도(감액)
+    current_price: float | None = None
+    delta_shares: float | None = None  # delta_value / current_price (양수 매수, 음수 매도)
+    action: str = ""  # "건仓" / "증액" / "감액" / "유지"
+
+
+@dataclass(frozen=True, slots=True)
+class RebalancePlan:
+    """The full set of actions to rebalance a strategy as of a given date."""
+
+    strategy_id: str
+    as_of: date
+    freq: RebalanceFreq
+    total_value: float
+    actions: tuple[RebalanceAction, ...]
+    max_drift: float
+    needs_rebalance: bool
+    next_rebalance_date: date | None
+    note: str
